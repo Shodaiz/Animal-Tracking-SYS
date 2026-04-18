@@ -16,28 +16,28 @@ public class User {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(unique = true, nullable = false, length = 50)
+    @Column(unique = true, nullable = false, length = 100)
     private String username;
+
+    @Column(unique = true, nullable = false, length = 191)
+    private String email;
 
     @Column(nullable = false)
     private String password;
 
-    @Column(nullable = false, length = 20)
-    private String role;
-    // ROLE_FARMER, ROLE_VET, ROLE_CONTROLLER
+    // ✅ BD finale : first_name + last_name séparés (plus de full_name)
+    @Column(name = "first_name", nullable = false, length = 100)
+    private String firstName;
 
-    @Column(unique = true, length = 100)
-    private String email;
-
-    @Column(name = "full_name", length = 100)
-    private String fullName;
+    @Column(name = "last_name", nullable = false, length = 100)
+    private String lastName;
 
     @Column(length = 20)
     private String phone;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "farm_id")
-    private Farm farm;
+    // ✅ Rôles alignés sur l'ENUM de la BD : Administrator, Veterinarian, Farmer, Inspector
+    @Column(nullable = false, length = 20)
+    private String role;
 
     @Column(name = "is_active")
     private Boolean isActive = true;
@@ -47,6 +47,13 @@ public class User {
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    // ✅ Supprimé : farm_id n'existe plus dans users (c'est farms.owner_id qui porte la relation)
+
+    // Méthode utilitaire pour avoir le nom complet
+    public String getFullName() {
+        return firstName + " " + lastName;
+    }
 
     @PrePersist
     protected void onCreate() {

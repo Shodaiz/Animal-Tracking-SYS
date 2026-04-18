@@ -2,8 +2,7 @@ package com.example.backend.model;
 
 import jakarta.persistence.*;
 import lombok.*;
-import org.apache.catalina.User;
-
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -19,26 +18,42 @@ public class Farm {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, length = 100)
+    // ✅ owner_id est maintenant une vraie FK vers users
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "owner_id", nullable = false)
+    private User owner;
+
+    @Column(nullable = false, length = 150)
     private String name;
 
     @Column(length = 255)
     private String location;
 
-    @Column(name = "owner_id")
-    private Long ownerId;
+    // ✅ Colonnes manquantes dans l'ancienne version
+    @Column(precision = 10, scale = 8)
+    private BigDecimal latitude;
 
-    @OneToMany(mappedBy = "farm", fetch = FetchType.LAZY)
-    private List<User> users;
+    @Column(precision = 11, scale = 8)
+    private BigDecimal longitude;
 
-    @OneToMany(mappedBy = "farm", fetch = FetchType.LAZY)
-    private List<Animal> animals;
+    @Column
+    private Integer capacity = 0;
+
+    @Column(length = 20)
+    private String status = "Active"; // Active, Suspended, Closed
+
+    @Column(name = "is_verified")
+    private Boolean isVerified = false;
 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    // ✅ import corrigé : com.example.backend.model.User (plus org.apache.catalina.User)
+    @OneToMany(mappedBy = "farm", fetch = FetchType.LAZY)
+    private List<Animal> animals;
 
     @PrePersist
     protected void onCreate() {

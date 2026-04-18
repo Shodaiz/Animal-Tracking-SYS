@@ -2,6 +2,7 @@ package com.example.backend.model;
 
 import jakarta.persistence.*;
 import lombok.*;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -22,9 +23,13 @@ public class HealthRecord {
     @JoinColumn(name = "animal_id", nullable = false)
     private Animal animal;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "veterinarian_id")
+    private User veterinarian;
+
+    // Vaccination, Treatment, Disease, Checkup, Surgery, LabTest, Injury
     @Column(name = "record_type", nullable = false, length = 30)
     private String recordType;
-    // Vaccination, Maladie, Traitement, Checkup, Surgery, LabTest, Injury
 
     @Column(columnDefinition = "TEXT")
     private String diagnosis;
@@ -32,18 +37,26 @@ public class HealthRecord {
     @Column(columnDefinition = "TEXT")
     private String symptoms;
 
-    @Column(columnDefinition = "TEXT")
-    private String treatment;
+    // ✅ treatment → treatment_plan (nom réel dans la BD)
+    @Column(name = "treatment_plan", columnDefinition = "TEXT")
+    private String treatmentPlan;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "veterinarian_id")
-    private User veterinarian;
-
-    @Column(name = "visit_date")
-    private LocalDate visitDate;
+    // ✅ LocalDate → LocalDateTime (BD déclare DATETIME NOT NULL)
+    @Column(name = "visit_date", nullable = false)
+    private LocalDateTime visitDate;
 
     @Column(name = "next_visit_date")
     private LocalDate nextVisitDate;
+
+    // ✅ Champs manquants dans l'ancienne version
+    @Column(name = "is_validated")
+    private Boolean isValidated = false;
+
+    @Column(name = "geo_latitude", precision = 10, scale = 8)
+    private BigDecimal geoLatitude;
+
+    @Column(name = "geo_longitude", precision = 11, scale = 8)
+    private BigDecimal geoLongitude;
 
     @Column(columnDefinition = "TEXT")
     private String notes;
@@ -59,6 +72,7 @@ public class HealthRecord {
 
     @PrePersist
     protected void onCreate() {
+        if (visitDate == null) visitDate = LocalDateTime.now();
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
     }

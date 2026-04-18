@@ -10,9 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -20,12 +18,13 @@ import java.util.Optional;
 @CrossOrigin(origins = "*")
 public class AuthController {
 
+    // ✅ Tous les champs DOIVENT être final pour que @RequiredArgsConstructor fonctionne
+    //    C'est la cause de l'erreur "repo not initialized in default constructor"
     private final UserRepository userRepository;
+    private final FarmRepository farmRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtils jwtUtils;
-    private final FarmRepository farmRepository;
 
-    // ─── LOGIN ──────────────────────────────────
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody Map<String, String> request) {
         String username = request.get("username");
@@ -38,6 +37,11 @@ public class AuthController {
                     .body(Map.of("message", "Identifiant ou mot de passe incorrect"));
         }
 
+        if (Boolean.FALSE.equals(user.getIsActive())) {
+            return ResponseEntity.status(403)
+                    .body(Map.of("message", "Compte désactivé"));
+        }
+
         String token = jwtUtils.generateToken(user.getUsername(), user.getRole());
 
         Map<String, Object> response = new HashMap<>();
@@ -45,62 +49,59 @@ public class AuthController {
         response.put("role", user.getRole());
         response.put("username", user.getUsername());
         response.put("userId", user.getId());
-        response.put("fullName", user.getFullName() != null ? user.getFullName() : user.getUsername());
-
-        if (user.getFarm() != null) {
-            response.put("farmId", user.getFarm().getId());
-            response.put("farmName", user.getFarm().getName());
-        }
+        // ✅ BD finale a first_name + last_name
+        response.put("fullName", user.getFullName());
 
         return ResponseEntity.ok(response);
     }
 
-    // ─── INSCRIPTION ─────────────────────────────
     @PostMapping("/register")
     public ResponseEntity<?> register(@RequestBody Map<String, String> request) {
         String username  = request.get("username");
         String password  = request.get("password");
         String email     = request.get("email");
-        String fullName  = request.get("fullName");
+        String firstName = request.get("firstName");
+        String lastName  = request.get("lastName");
         String role      = request.get("role");
         String phone     = request.get("phone");
 
-        // Vérifier si username existe déjà
         if (userRepository.findByUsername(username).isPresent()) {
             return ResponseEntity.status(400)
                     .body(Map.of("message", "Ce nom d'utilisateur est déjà pris"));
         }
-
-        // Vérifier si email existe déjà
         if (email != null && userRepository.findByEmail(email).isPresent()) {
             return ResponseEntity.status(400)
                     .body(Map.of("message", "Cet email est déjà utilisé"));
         }
 
-        // Valider le rôle
-        if (role == null || (!role.equals("ROLE_FARMER") &&
-                !role.equals("ROLE_VET") && !role.equals("ROLE_CONTROLLER"))) {
-            role = "ROLE_FARMER"; // Rôle par défaut
+        // ✅ Rôles valides alignés sur l'ENUM de la BD finale
+        List<String> validRoles = List.of("Farmer", "Veterinarian", "Inspector", "Administrator");
+        if (role == null || !validRoles.contains(role)) {
+            role = "Farmer";
         }
 
-        User newUser = new User();
-        newUser.setUsername(username);
-        newUser.setPassword(passwordEncoder.encode(password));
-        newUser.setEmail(email);
-        newUser.setFullName(fullName);
-        newUser.setRole(role);
-        newUser.setPhone(phone);
-
-        // Si fermier, créer une ferme automatiquement
-        if (role.equals("ROLE_FARMER")) {
-            Farm farm = new Farm();
-            farm.setName("Ferme de " + (fullName != null ? fullName : username));
-            farm.setLocation("À définir");
-            farmRepository.save(farm);
-            newUser.setFarm(farm);
-        }
+        User newUser = User.builder()
+                .username(username)
+                .password(passwordEncoder.encode(password))
+                .email(email)
+                .firstName(firstName != null ? firstName : username)
+                .lastName(lastName != null ? lastName : "")
+                .role(role)
+                .phone(phone)
+                .isActive(true)
+                .build();
 
         userRepository.save(newUser);
+
+        // ✅ Si Farmer, créer une ferme avec owner (owner_id NOT NULL dans la BD)
+        if (role.equals("Farmer")) {
+            Farm farm = Farm.builder()
+                    .name("Ferme de " + newUser.getFullName())
+                    .location("À définir")
+                    .owner(newUser)  // ✅ owner obligatoire
+                    .build();
+            farmRepository.save(farm);
+        }
 
         return ResponseEntity.ok(Map.of(
                 "message", "Compte créé avec succès",
@@ -109,30 +110,23 @@ public class AuthController {
         ));
     }
 
-    // ─── MOT DE PASSE OUBLIÉ ─────────────────────
-    // Vérifie si username OU email existe
     @PostMapping("/forgot-password")
     public ResponseEntity<?> forgotPassword(@RequestBody Map<String, String> request) {
-        String identifier = request.get("identifier"); // username ou email
-
-        if (identifier == null || identifier.trim().isEmpty()) {
+        String identifier = request.get("identifier");
+        if (identifier == null || identifier.isBlank()) {
             return ResponseEntity.status(400)
                     .body(Map.of("message", "Veuillez fournir un identifiant ou email"));
         }
 
-        // Chercher par username OU email
         Optional<User> userOpt = userRepository.findByUsername(identifier);
-        if (userOpt.isEmpty()) {
-            userOpt = userRepository.findByEmail(identifier);
-        }
+        if (userOpt.isEmpty()) userOpt = userRepository.findByEmail(identifier);
 
         if (userOpt.isEmpty()) {
             return ResponseEntity.status(404)
-                    .body(Map.of("message", "Aucun compte trouvé avec cet identifiant ou email"));
+                    .body(Map.of("message", "Aucun compte trouvé"));
         }
 
         User user = userOpt.get();
-
         return ResponseEntity.ok(Map.of(
                 "message", "Compte trouvé. Vous pouvez réinitialiser votre mot de passe.",
                 "username", user.getUsername(),
@@ -140,26 +134,21 @@ public class AuthController {
         ));
     }
 
-    // ─── RÉINITIALISATION MOT DE PASSE ──────────
     @PostMapping("/reset-password")
     public ResponseEntity<?> resetPassword(@RequestBody Map<String, String> request) {
-        String identifier   = request.get("identifier"); // username ou email
-        String newPassword  = request.get("newPassword");
+        String identifier  = request.get("identifier");
+        String newPassword = request.get("newPassword");
 
         if (newPassword == null || newPassword.length() < 6) {
             return ResponseEntity.status(400)
                     .body(Map.of("message", "Le mot de passe doit contenir au moins 6 caractères"));
         }
 
-        // Chercher par username OU email
         Optional<User> userOpt = userRepository.findByUsername(identifier);
-        if (userOpt.isEmpty()) {
-            userOpt = userRepository.findByEmail(identifier);
-        }
+        if (userOpt.isEmpty()) userOpt = userRepository.findByEmail(identifier);
 
         if (userOpt.isEmpty()) {
-            return ResponseEntity.status(404)
-                    .body(Map.of("message", "Utilisateur non trouvé"));
+            return ResponseEntity.status(404).body(Map.of("message", "Utilisateur non trouvé"));
         }
 
         User user = userOpt.get();
@@ -169,13 +158,10 @@ public class AuthController {
         return ResponseEntity.ok(Map.of("message", "Mot de passe réinitialisé avec succès"));
     }
 
-    // Masquer l'email pour la sécurité (ex: a***@gmail.com)
     private String maskEmail(String email) {
-        if (email == null || !email.contains("@")) return "***";
+        if (!email.contains("@")) return "***";
         String[] parts = email.split("@");
         String local = parts[0];
-        String domain = parts[1];
-        if (local.length() <= 2) return "***@" + domain;
-        return local.charAt(0) + "***@" + domain;
+        return (local.length() <= 2 ? "***" : local.charAt(0) + "***") + "@" + parts[1];
     }
 }

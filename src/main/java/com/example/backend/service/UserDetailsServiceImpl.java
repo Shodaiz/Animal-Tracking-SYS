@@ -1,5 +1,5 @@
-package com.example.backend.service;
 
+package com.example.backend.service;
 
 import com.example.backend.model.User;
 import com.example.backend.repository.UserRepository;
@@ -13,6 +13,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class UserDetailsServiceImpl implements UserDetailsService {
 
+    // ✅ final obligatoire pour que @RequiredArgsConstructor génère le bon constructeur
     private final UserRepository userRepository;
 
     @Override
@@ -21,10 +22,10 @@ public class UserDetailsServiceImpl implements UserDetailsService {
 
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() ->
-                        new UsernameNotFoundException(
-                                "Utilisateur non trouvé : " + username));
+                        new UsernameNotFoundException("Utilisateur non trouvé : " + username));
 
-        // Attribue le rôle à l'utilisateur pour Spring Security
+        // ✅ user.getRole() retourne directement "Farmer", "Veterinarian", etc.
+        //    Doit correspondre exactement aux hasAuthority() dans SecurityConfig
         return new org.springframework.security.core.userdetails.User(
                 user.getUsername(),
                 user.getPassword(),

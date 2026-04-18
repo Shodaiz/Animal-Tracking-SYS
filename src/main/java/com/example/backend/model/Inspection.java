@@ -2,42 +2,41 @@ package com.example.backend.model;
 
 import jakarta.persistence.*;
 import lombok.*;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "constats")
+@Table(name = "inspections")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Constat {
+public class Inspection {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "controller_id", nullable = false)
-    private User controller;
+    @JoinColumn(name = "inspector_id", nullable = false)
+    private User inspector;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "farm_id", nullable = false)
-    private Farm farm;
+    @JoinColumn(name = "animal_id")
+    private Animal animal;
 
-    @Column(columnDefinition = "TEXT", nullable = false)
-    private String description;
+    @Column(name = "inspection_date")
+    private LocalDateTime inspectionDate;
 
     @Column(name = "constat_type", length = 50)
     private String constatType = "General";
-    // General, Missing_animal, Fraud, Health_issue
 
+    // Compliant, Fraud, Suspicious, Pending
     @Column(length = 20)
-    private String severity = "Normal";
-    // Normal, Warning, Critical
+    private String result = "Pending";
 
-    @Column(length = 20)
-    private String status = "Pending";
-    // Pending, Reviewed, Resolved, Rejected
+    @Column(columnDefinition = "TEXT")
+    private String description;
 
     @Column(name = "scanned_count")
     private Integer scannedCount = 0;
@@ -45,14 +44,18 @@ public class Constat {
     @Column(name = "registered_count")
     private Integer registeredCount = 0;
 
-    @Column()
-    private Integer difference = 0;
+    @Column(insertable = false, updatable = false)
+    private Integer difference;
 
-    @Column(name = "missing_tags", columnDefinition = "TEXT")
-    private String missingTags;
+    @Column(name = "geo_latitude", precision = 10, scale = 8)
+    private BigDecimal geoLatitude;
 
-    @Column(name = "unknown_tags", columnDefinition = "TEXT")
-    private String unknownTags;
+    @Column(name = "geo_longitude", precision = 11, scale = 8)
+    private BigDecimal geoLongitude;
+
+    // Pending, UnderReview, Resolved, Rejected
+    @Column(length = 20)
+    private String status = "Pending";
 
     @Column(name = "resolved_at")
     private LocalDateTime resolvedAt;
@@ -60,6 +63,9 @@ public class Constat {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "resolved_by")
     private User resolvedBy;
+
+    @Column(columnDefinition = "TEXT")
+    private String notes;
 
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
@@ -69,6 +75,7 @@ public class Constat {
 
     @PrePersist
     protected void onCreate() {
+        if (inspectionDate == null) inspectionDate = LocalDateTime.now();
         createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
     }

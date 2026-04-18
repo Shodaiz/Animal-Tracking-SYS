@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
     <parent>
@@ -8,11 +9,12 @@
         <version>3.2.2</version>
         <relativePath/>
     </parent>
+
     <groupId>com.dzcheptel</groupId>
     <artifactId>animal-tracking</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>animal-tracking-system</name>
-    <description>Système de traçabilité animale</description>
+    <description>Système de traçabilité animale - HB Technologies</description>
 
     <properties>
         <java.version>17</java.version>
@@ -36,7 +38,7 @@
             <scope>runtime</scope>
         </dependency>
 
-        <!-- Security & JWT -->
+        <!-- Security & JWT — ✅ toutes les 3 dépendances sur la MÊME version 0.12.6 -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security</artifactId>
@@ -44,7 +46,7 @@
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-api</artifactId>
-            <version>0.11.5</version>
+            <version>0.12.6</version>
         </dependency>
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
@@ -55,7 +57,7 @@
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-jackson</artifactId>
-            <version>0.11.5</version>
+            <version>0.12.6</version>
             <scope>runtime</scope>
         </dependency>
 

@@ -26,38 +26,28 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                .csrf(AbstractHttpConfigurer::disable)
-                .sessionManagement(session ->
-                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth -> auth
-                        // Routes publiques (Login)
-                        .requestMatchers("/api/auth/**").permitAll()
+            .csrf(AbstractHttpConfigurer::disable)
+            .sessionManagement(session ->
+                session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .authorizeHttpRequests(auth -> auth
 
-                        // Fichiers statiques (HTML, CSS, JS)
-                        .requestMatchers("/", "/index.html", "/test.html",
-                                "/css/**", "/js/**", "/images/**").permitAll()
+                // ✅ Routes publiques
+                .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers("/", "/index.html", "/css/**", "/js/**", "/images/**").permitAll()
 
-                        // Routes Fermier uniquement
-                        .requestMatchers("/api/farmer/**")
-                        .hasAuthority("ROLE_FARMER")
+                // ✅ Rôles alignés sur l'ENUM de la BD finale (sans préfixe ROLE_)
+                .requestMatchers("/api/farmer/**").hasAuthority("Farmer")
+                .requestMatchers("/api/vet/**").hasAuthority("Veterinarian")
+                .requestMatchers("/api/inspector/**").hasAuthority("Inspector")
+                .requestMatchers("/api/admin/**").hasAuthority("Administrator")
 
-                        // Routes Vétérinaire uniquement
-                        .requestMatchers("/api/vet/**")
-                        .hasAuthority("ROLE_VET")
+                // Admin + Inspector peuvent accéder aux inspections
+                .requestMatchers("/api/inspection/**")
+                    .hasAnyAuthority("Inspector", "Administrator")
 
-                        // Routes Contrôleur uniquement
-                        .requestMatchers("/api/controller/**")
-                        .hasAuthority("ROLE_CONTROLLER")
-
-                        // Routes Constat - Contrôleur uniquement
-                        .requestMatchers("/api/constat/**")
-                        .hasAuthority("ROLE_CONTROLLER")
-
-                        // Toutes les autres routes nécessitent une authentification
-                        .anyRequest().authenticated()
-                )
-                .addFilterBefore(jwtAuthFilter,
-                        UsernamePasswordAuthenticationFilter.class);
+                .anyRequest().authenticated()
+            )
+            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
